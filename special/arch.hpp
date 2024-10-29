@@ -248,34 +248,20 @@
 /**
  * @brief Branch prediction optimization macros
  */
-#if defined(__GNUC__) || defined(__clang__) // x86 GNU does not have __builtin_expect
-    #define LIKELY(x)
-    #define UNLIKELY(x)
+#if defined(__clang__)
+    #define LIKELY(x) __builtin_expect(!!(x), 1)
+    #define UNLIKELY(x) __builtin_expect(!!(x), 0)
     #define ALWAYS_INLINE [[gnu::always_inline]] inline
     #define NEVER_INLINE __attribute__((noinline))
     #define RESTRICT __restrict__
     #define ALIGN_TO(x) __attribute__((aligned(x)))
     #define PACKED __attribute__((packed))
-
-    #if defined(__clang__)
-        #undef LIKELY
-        #undef UNLIKELY
-        #define LIKELY(x) __builtin_expect(!!(x), 1)
-        #define UNLIKELY(x) __builtin_expect(!!(x), 0)
-        #define ASSUME(x) __builtin_assume(x)
-        #define ASSUME_ALIGNED(x, a) __builtin_assume_aligned(x, a)
-        #define NO_SANITIZE __attribute__((no_sanitize("address")))
-        #define VECTORIZE_LOOP _Pragma("clang loop vectorize(enable) interleave(enable)")
-        #define UNROLL_LOOP _Pragma("clang loop unroll(full)")
-        #define NO_VECTORIZE _Pragma("clang loop vectorize(disable)")
-    #else
-        #define ASSUME(x) ((void)0)
-        #define ASSUME_ALIGNED(x, a) (x)
-        #define NO_SANITIZE
-        #define VECTORIZE_LOOP _Pragma("GCC ivdep")
-        #define UNROLL_LOOP _Pragma("GCC unroll 8")
-        #define NO_VECTORIZE _Pragma("GCC novector")
-    #endif
+    #define ASSUME(x) __builtin_assume(x)
+    #define ASSUME_ALIGNED(x, a) __builtin_assume_aligned(x, a)
+    #define NO_SANITIZE __attribute__((no_sanitize("address")))
+    #define VECTORIZE_LOOP _Pragma("clang loop vectorize(enable) interleave(enable)")
+    #define UNROLL_LOOP _Pragma("clang loop unroll(full)")
+    #define NO_VECTORIZE _Pragma("clang loop vectorize(disable)")
 #else
     #define LIKELY(x) (x)
     #define UNLIKELY(x) (x)

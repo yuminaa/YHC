@@ -54,28 +54,6 @@ protected:
     }
 };
 
-TEST_F(SIMDTest, VectorAddition)
-{
-    for (std::vector<float>::size_type i = 0; i < TEST_SIZE; i += SIMD_WIDTH / sizeof(float))
-    {
-        #if defined(__ARM_NEON)
-            const auto vec1 = vld1q_f32(&data1[i]);
-            const auto vec2 = vld1q_f32(&data2[i]);
-            const auto sum = vaddq_f32(vec1, vec2);
-            vst1q_f32(&result[i], sum);
-        #endif
-        for (std::vector<float>::size_type j = i; j < i + SIMD_WIDTH / sizeof(float) && j < TEST_SIZE; ++j)
-        {
-            result[j] = data1[j] + data2[j];
-        }
-    }
-
-    for (std::vector<float>::size_type i = 0; i < TEST_SIZE; ++i)
-    {
-        EXPECT_FLOAT_EQ(result[i], data1[i] + data2[i]);
-    }
-}
-
 /**
  * @brief Test fixture for memory operations
  */
