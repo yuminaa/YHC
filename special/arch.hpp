@@ -203,9 +203,13 @@
         #define SET_ZERO_VECTOR() vdupq_n_u8(0)
         #define STREAM_STORE_64(addr, val) vst1_u64((uint64_t*)(addr), vcreate_u64(val))
 
-        #define ADD_PS(a, b) vaddq_f32(a, b)
-        #define MUL_PS(a, b) vmulq_f32(a, b)
-        #define FMA_PS(a, b, c) vfmaq_f32(c, a, b)
+        #define ADD_PS_F(a, b) vaddq_f32(a, b)
+        #define MUL_PS_F(a, b) vmulq_f32(a, b)
+        #define FMA_PS_F(a, b, c) vfmaq_f32(c, a, b)
+
+        // Integer operations
+        #define ADD_PS_I(a, b) vaddq_s64(a, b)
+        #define MUL_PS_I(a, b) vmulq_s32(a, b)
 
         #define PREFETCH_KEEP(addr) __asm__ volatile("prfm pldl1keep, [%0]" :: "r"(addr))
         #define PREFETCH_STREAM(addr) __asm__ volatile("prfm pldl1strm, [%0]" :: "r"(addr))
@@ -338,7 +342,7 @@
 /**
  * @brief ARM feature detection macros
  */
-#if defined(ARCH_ARM64)
+#if defined(YUMINA_ARCH_ARM64)
     #if defined(__ARM_FEATURE_CRC32)
         #define HAS_CRC32
     #endif
@@ -369,14 +373,25 @@
     #define NO_OPTIMIZE_AWAY(var) ::_ReadWriteBarrier()
 #endif
 
-
 /**
  * @brief Function optimization attributes
  */
-#define NO_SANITIZE __attribute__((no_sanitize("address")))
-#define HOT_FUNCTION __attribute__((hot))
-#define COLD_FUNCTION __attribute__((cold))
-#define PURE_FUNCTION __attribute__((pure))
-#define CONST_FUNCTION __attribute__((const))
+#if defined(__GNUC__) || defined(__clang__)
+    #define NO_SANITIZE __attribute__((no_sanitize("address")))
+    #define HOT_FUNCTION __attribute__((hot))
+    #define COLD_FUNCTION __attribute__((cold))
+    #define PURE_FUNCTION __attribute__((pure))
+    #define CONST_FUNCTION __attribute__((const))
+#else
+    #define NO_SANITIZE
+    #define HOT_FUNCTION
+    #define COLD_FUNCTION
+    #define PURE_FUNCTION
+    #define CONST_FUNCTION
+#endif
+
+#ifdef YUMINA_ARCH_ARM64
+    #undef YUMINA_ARCH_ARM64
+#endif
 
 #endif

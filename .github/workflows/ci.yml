@@ -8,12 +8,13 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.os }} - ${{ matrix.compiler }} - ${{ matrix.build_type }}
+    name: ${{ matrix.os }} - ${{ matrix.arch }} - ${{ matrix.compiler }} - ${{ matrix.build_type }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, macos-latest ]
+        arch: [ x86_64, arm64 ]
         compiler: [clang, gcc]
         build_type: [Release]
         exclude:
@@ -42,9 +43,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.ccache
-          key: ${{ runner.os }}-${{ matrix.compiler }}-${{ matrix.build_type }}-ccache-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}-ccache-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.compiler }}-${{ matrix.build_type }}-ccache-
+            ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}-ccache-
 
       - name: Cache Clang
         uses: actions/cache@v4
@@ -121,7 +122,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-logs-${{ runner.os }}-${{ matrix.compiler }}-${{ matrix.build_type }}
+          name: test-logs-${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}
           path: |
             ${{ github.workspace }}/build/Testing/Temporary/LastTest.log
             ${{ github.workspace }}/build/tests/test_detail.xml

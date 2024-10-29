@@ -77,26 +77,31 @@ protected:
 
 TEST_F(SIMDTest, VectorAddition)
 {
-    // Test vector addition
     for (size_t i = 0; i < TEST_SIZE; i += SIMD_WIDTH / sizeof(float))
     {
-        const auto vec1 = LOAD_VECTOR(&data1[static_cast<std::vector<float>::size_type>(i)]);
-        const auto vec2 = LOAD_VECTOR(&data2[static_cast<std::vector<float>::size_type>(i)]);
-        const auto sum = ADD_PS(vec1, vec2);
-        STORE_VECTOR(&result[static_cast<std::vector<float>::size_type>(i)], sum);
+        #if defined(__AVX512F__)
+                const auto vec1 = _mm512_loadu_ps(&data1[i]);
+                const auto vec2 = _mm512_loadu_ps(&data2[i]);
+                const auto sum = _mm512_add_ps(vec1, vec2);
+                _mm512_storeu_ps(&result[i], sum);
+        #elif defined(__AVX2__)
+                const auto vec1 = _mm256_loadu_ps(&data1[i]);
+                const auto vec2 = _mm256_loadu_ps(&data2[i]);
+                const auto sum = _mm256_add_ps(vec1, vec2);
+                _mm256_storeu_ps(&result[i], sum);
+        #endif
     }
 
-    // Result verification
-    for (size_t i = 0; i < TEST_SIZE; ++i)
+    for (std::vector<float>::size_type i = 0; i < TEST_SIZE; ++i)
     {
-        EXPECT_FLOAT_EQ(result[static_cast<std::vector<float>::size_type>(i)], data1[static_cast<std::vector<float>::size_type>(i)] + data2[static_cast<std::vector<float>::size_type>(i)]);
+        EXPECT_FLOAT_EQ(result[i], data1[i] + data2[i]);
     }
 }
 
 /**
  * @brief Test fixture for memory operations
  */
-class MemoryTest : public ::testing::Test
+class MemoryTest : public testing::Test
 {
 protected:
     void SetUp() override {}
@@ -208,7 +213,7 @@ TEST_F(ARMTest, NEONOperations)
     const float32x4_t b = vdupq_n_f32(2.0f);
     const float32x4_t c = vdupq_n_f32(3.0f);
 
-    const float32x4_t result = FMA_PS(a, b, c);
+    const float32x4_t result = vfmaq_f32(c, a, b);
     float results[4];
     vst1q_f32(results, result);
 
