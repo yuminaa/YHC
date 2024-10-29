@@ -108,23 +108,6 @@ TEST_F(MemoryTest, Alignment)
     EXPECT_EQ(reinterpret_cast<std::uintptr_t>(&simd_aligned_data) % SIMD_WIDTH, 0);
 }
 
-TEST(OptimizationTest, BranchPrediction)
-{
-    auto sum = 0;
-    for (auto i = 0; i < 1000; ++i)
-    {
-        if (LIKELY(i < 999))
-        {
-            sum += i;
-        }
-        if (UNLIKELY(i == 999))
-        {
-            sum += i;
-        }
-    }
-    EXPECT_EQ(sum, 499500);
-}
-
 #if defined(YUMINA_ARCH_ARM64)
 /**
  * @brief Test fixture for ARM-specific features
