@@ -57,6 +57,12 @@ elseif(MSVC)
     endif()
 endif()
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64")
+    add_definitions(-DYUMINA_ARCH_X64)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+    add_definitions(-DYUMINA_ARCH_ARM64)
+endif()
+
 target_link_libraries(yumina_tests PRIVATE
         Yumina
         GTest::gtest
@@ -64,4 +70,7 @@ target_link_libraries(yumina_tests PRIVATE
 )
 
 include(GoogleTest)
-gtest_discover_tests(yumina_tests)
+gtest_discover_tests(yumina_tests
+        PROPERTIES
+        ENVIRONMENT "GTEST_COLOR=yes"
+)

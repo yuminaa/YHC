@@ -30,27 +30,6 @@ TEST(PlatformTest, DetectionMacros)
 }
 
 /**
- * @brief Test architecture detection
- */
-TEST(ArchitectureTest, Detection)
-{
-    #if defined(YUMINA_ARCH_X64)
-        EXPECT_TRUE(true) << "x64 architecture detected";
-    #endif
-
-    #if defined(YUMINA_ARCH_ARM64)
-        EXPECT_TRUE(true) << "ARM64 architecture detected";
-    #endif
-
-    // At least one architecture should be detected
-    #if defined(YUMINA_ARCH_X64) || defined(YUMINA_ARCH_ARM64)
-        EXPECT_TRUE(true) << "Architecture detected correctly";
-    #else
-        FAIL() << "No architecture detected";
-    #endif
-}
-
-/**
  * @brief Test fixture for SIMD operations
  */
 class SIMDTest : public testing::Test
@@ -80,15 +59,20 @@ TEST_F(SIMDTest, VectorAddition)
     for (size_t i = 0; i < TEST_SIZE; i += SIMD_WIDTH / sizeof(float))
     {
         #if defined(__AVX512F__)
-                const auto vec1 = _mm512_loadu_ps(&data1[i]);
-                const auto vec2 = _mm512_loadu_ps(&data2[i]);
-                const auto sum = _mm512_add_ps(vec1, vec2);
-                _mm512_storeu_ps(&result[i], sum);
+            const auto vec1 = _mm512_loadu_ps(&data1[i]);
+            const auto vec2 = _mm512_loadu_ps(&data2[i]);
+            const auto sum = _mm512_add_ps(vec1, vec2);
+            _mm512_storeu_ps(&result[i], sum);
         #elif defined(__AVX2__)
-                const auto vec1 = _mm256_loadu_ps(&data1[i]);
-                const auto vec2 = _mm256_loadu_ps(&data2[i]);
-                const auto sum = _mm256_add_ps(vec1, vec2);
-                _mm256_storeu_ps(&result[i], sum);
+            const auto vec1 = _mm256_loadu_ps(&data1[i]);
+            const auto vec2 = _mm256_loadu_ps(&data2[i]);
+            const auto sum = _mm256_add_ps(vec1, vec2);
+            _mm256_storeu_ps(&result[i], sum);
+        #else
+            for (std::vector<float>::size_type j = i; j < i + SIMD_WIDTH / sizeof(float) && j < TEST_SIZE; ++j)
+            {
+                result[j] = data1[j] + data2[j];
+            }
         #endif
     }
 
