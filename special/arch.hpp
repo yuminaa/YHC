@@ -103,7 +103,7 @@
      */
     #ifdef __GNUC__
         #include <cpuid.h>
-        ALWAYS_INLINE static bool cpu_has_avx2()
+        [[gnu::always_inline]] inline static bool cpu_has_avx2()
         {
             unsigned int eax, ebx, ecx, edx;
             __get_cpuid(7, &eax, &ebx, &ecx, &edx);
@@ -115,7 +115,7 @@
          *
          * @return True if AVX512F is supported, false otherwise.
          */
-        ALWAYS_INLINE static bool cpu_has_avx512f()
+        [[gnu::always_inline]] inline static bool cpu_has_avx512f()
         {
             unsigned int eax, ebx, ecx, edx;
             __get_cpuid(7, &eax, &ebx, &ecx, &edx);
@@ -127,7 +127,7 @@
          *
          * @return True if AVX2 is supported, false otherwise.
          */
-        ALWAYS_INLINE static bool cpu_has_avx2()
+        [[gnu::always_inline]] inline static bool cpu_has_avx2()
         {
             int cpuInfo[4];
             __cpuid(cpuInfo, 7);
@@ -139,7 +139,7 @@
          *
          * @return True if AVX512F is supported, false otherwise.
          */
-        ALWAYS_INLINE static bool cpu_has_avx512f()
+        [[gnu::always_inline]] inline static bool cpu_has_avx512f()
         {
             int cpuInfo[4];
             __cpuid(cpuInfo, 7);
