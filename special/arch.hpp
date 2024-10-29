@@ -248,9 +248,9 @@
 /**
  * @brief Branch prediction optimization macros
  */
-#if defined(__GNUC__) || defined(__clang__)
-    #define LIKELY(x) __builtin_expect(!!(x), 1)
-    #define UNLIKELY(x) __builtin_expect(!!(x), 0)
+#if defined(__GNUC__) || defined(__clang__) // x86 GNU does not have __builtin_expect
+    #define LIKELY(x)
+    #define UNLIKELY(x)
     #define ALWAYS_INLINE [[gnu::always_inline]] inline
     #define NEVER_INLINE __attribute__((noinline))
     #define RESTRICT __restrict__
@@ -258,6 +258,10 @@
     #define PACKED __attribute__((packed))
 
     #if defined(__clang__)
+        #undef LIKELY
+        #undef UNLIKELY
+        #define LIKELY(x) __builtin_expect(!!(x), 1)
+        #define UNLIKELY(x) __builtin_expect(!!(x), 0)
         #define ASSUME(x) __builtin_assume(x)
         #define ASSUME_ALIGNED(x, a) __builtin_assume_aligned(x, a)
         #define NO_SANITIZE __attribute__((no_sanitize("address")))

@@ -56,24 +56,18 @@ protected:
 
 TEST_F(SIMDTest, VectorAddition)
 {
-    for (size_t i = 0; i < TEST_SIZE; i += SIMD_WIDTH / sizeof(float))
+    for (std::vector<float>::size_type i = 0; i < TEST_SIZE; i += SIMD_WIDTH / sizeof(float))
     {
-        #if defined(__AVX512F__)
-            const auto vec1 = _mm512_loadu_ps(&data1[i]);
-            const auto vec2 = _mm512_loadu_ps(&data2[i]);
-            const auto sum = _mm512_add_ps(vec1, vec2);
-            _mm512_storeu_ps(&result[i], sum);
-        #elif defined(__AVX2__)
-            const auto vec1 = _mm256_loadu_ps(&data1[i]);
-            const auto vec2 = _mm256_loadu_ps(&data2[i]);
-            const auto sum = _mm256_add_ps(vec1, vec2);
-            _mm256_storeu_ps(&result[i], sum);
-        #else
-            for (std::vector<float>::size_type j = i; j < i + SIMD_WIDTH / sizeof(float) && j < TEST_SIZE; ++j)
-            {
-                result[j] = data1[j] + data2[j];
-            }
+        #if defined(__ARM_NEON)
+            const auto vec1 = vld1q_f32(&data1[i]);
+            const auto vec2 = vld1q_f32(&data2[i]);
+            const auto sum = vaddq_f32(vec1, vec2);
+            vst1q_f32(&result[i], sum);
         #endif
+        for (std::vector<float>::size_type j = i; j < i + SIMD_WIDTH / sizeof(float) && j < TEST_SIZE; ++j)
+        {
+            result[j] = data1[j] + data2[j];
+        }
     }
 
     for (std::vector<float>::size_type i = 0; i < TEST_SIZE; ++i)
