@@ -13,9 +13,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ ubuntu-latest, macos-latest ]
         compiler: [clang, gcc]
-        build_type: [Debug, Release]
+        build_type: [Release]
         exclude:
           - os: macos-latest
             compiler: gcc

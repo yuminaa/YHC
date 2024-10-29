@@ -1,8 +1,8 @@
 #include <atomic>
-#include <cstring>
 #include <thread>
 #include <vector>
 #include <gtest/gtest.h>
+
 #include "../../special/arch.hpp"
 
 /**
@@ -123,9 +123,6 @@ TEST_F(MemoryTest, Fences)
         LOAD_FENCE();
         EXPECT_EQ(value.load(std::memory_order_relaxed), 42);
     });
-
-    producer.join();
-    consumer.join();
 
     producer.join();
     consumer.join();
