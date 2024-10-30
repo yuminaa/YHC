@@ -14,7 +14,7 @@ if(APPLE AND YUMINA_ARCH_ARM64)
 endif()
 
 add_executable(yumina_tests
-        arch/test.cpp
+        mem.cpp
 )
 
 target_include_directories(yumina_tests PRIVATE
