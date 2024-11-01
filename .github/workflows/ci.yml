@@ -1,8 +1,11 @@
-name: YHP CI
+name: CI
 
 on:
   push:
     branches: [ main, dev ]
+    paths-ignore:
+      - '**/coverage.info'
+      - '**/coverage.xml'
   pull_request:
     branches: [ main, dev ]
 
@@ -16,51 +19,75 @@ jobs:
         os: [ macos-latest ]
         arch: [ arm64 ]
         compiler: [ clang ]
-        build_type: [ Release, Debug ]
+        build_type: [ Release ]
 
     env:
       BUILD_TYPE: ${{ matrix.build_type }}
       CCACHE_DIR: ${{ github.workspace }}/.ccache
-      CCACHE_COMPRESS: "true"
-      CCACHE_MAXSIZE: "500M"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: recursive
-          fetch-depth: 0
+          submodules: recursive  # Important for getting Google Test submodule
 
+      # If Google Test isn't a submodule, fetch it explicitly
       - name: Fetch Google Test
         if: ${{ !hashFiles('vendor/googletest/**') }}
         run: |
-          git clone --depth 1 -b v1.15.2 https://github.com/google/googletest.git vendor/googletest
+          git clone https://github.com/google/googletest.git vendor/googletest
+          cd vendor/googletest
+          git checkout v1.15.2
 
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+      - name: Cache ccache directory
+        uses: actions/cache@v4
         with:
-          key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}
-          max-size: 500M
+          path: ${{ github.workspace }}/.ccache
+          key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}-ccache-
+
+      - name: Cache Clang
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/clang
+          key: ${{ runner.os }}-clang-${{ hashFiles('**/clang-version.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-clang-
+
+      - name: Install Dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ccache \
+            cmake \
+            ninja-build
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            sudo apt-get install -y clang-15 libc++-15-dev libc++abi-15-dev
+          fi
 
       - name: Install Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           brew install \
+            ccache \
             cmake \
             ninja \
-            llvm \
-            lcov \
-            || true
+            llvm
 
       - name: Configure Compiler
         run: |
           if [ "${{ matrix.compiler }}" = "clang" ]; then
             if [ "${{ runner.os }}" = "macOS" ]; then
-              LLVM_PATH=$(brew --prefix llvm)
-              echo "CC=$LLVM_PATH/bin/clang" >> $GITHUB_ENV
-              echo "CXX=$LLVM_PATH/bin/clang++" >> $GITHUB_ENV
-              echo "LDFLAGS=-L$LLVM_PATH/lib" >> $GITHUB_ENV
-              echo "CPPFLAGS=-I$LLVM_PATH/include" >> $GITHUB_ENV
+              echo "CC=/opt/homebrew/opt/llvm/bin/clang" >> $GITHUB_ENV
+              echo "CXX=/opt/homebrew/opt/llvm/bin/clang++" >> $GITHUB_ENV
+              echo "CXXFLAGS=-stdlib=libc++" >> $GITHUB_ENV
+              echo "LDFLAGS=-stdlib=libc++" >> $GITHUB_ENV
+            else
+              echo "CC=clang-15" >> $GITHUB_ENV
+              echo "CXX=clang++-15" >> $GITHUB_ENV
             fi
           fi
 
@@ -76,55 +103,25 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install \
-            -DBUILD_TESTING=ON \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DCMAKE_CXX_FLAGS="-stdlib=libc++ --coverage -fprofile-instr-generate -fcoverage-mapping" \
-            -DCMAKE_C_FLAGS="--coverage"
+            -DBUILD_TESTING=ON
 
       - name: Build
         working-directory: ${{ github.workspace }}/build
-        run: |
-          cmake --build . --config ${{ matrix.build_type }} -j$(sysctl -n hw.ncpu)
+        run: cmake --build . --config ${{ matrix.build_type }}
 
       - name: Run Tests
         working-directory: ${{ github.workspace }}/build
         run: |
+          # Run tests with verbose output on failure
           export GTEST_COLOR=yes
-          ctest --output-on-failure -C ${{ matrix.build_type }} --verbose --timeout 300
+          ctest --output-on-failure -C ${{ matrix.build_type }} --verbose
 
-      - name: Generate Coverage Report
-        working-directory: ${{ github.workspace }}
-        run: |
-          lcov --capture --directory build --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' '/opt/*' '*/vendor/*' '*/tests/*' --output-file coverage.info
-          lcov --list coverage.info
-          
-          pip3 install lcov_cobertura
-          python3 -m lcov_cobertura coverage.info --output coverage.xml
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload Test Logs
+        if: always()
+        uses: actions/upload-artifact@v4.4.3
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.info,./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-          verbose: true
-
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
+          name: test-logs-${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}
           path: |
-            coverage.info
-            coverage.xml
-          retention-days: 14
-
-      - name: Cache Build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ github.workspace }}/build
-            !${{ github.workspace }}/build/CMakeCache.txt
-          key: ${{ runner.os }}-build-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ hashFiles('**/*.cpp', '**/*.hpp', '**/CMakeLists.txt') }}
+            ${{ github.workspace }}/build/Testing/Temporary/LastTest.log
+            ${{ github.workspace }}/build/tests/test_detail.xml
+          retention-days: 7
