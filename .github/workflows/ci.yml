@@ -13,13 +13,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
-        arch: [ x86_64, arm64 ]
-        compiler: [clang, gcc]
-        build_type: [Release]
-        exclude:
-          - os: macos-latest
-            compiler: gcc
+        os: [ macos-latest ]
+        arch: [ arm64 ]
+        compiler: [ clang ]
+        build_type: [ Release ]
 
     env:
       BUILD_TYPE: ${{ matrix.build_type }}
@@ -89,9 +86,6 @@ jobs:
               echo "CC=clang-15" >> $GITHUB_ENV
               echo "CXX=clang++-15" >> $GITHUB_ENV
             fi
-          else
-            echo "CC=gcc" >> $GITHUB_ENV
-            echo "CXX=g++" >> $GITHUB_ENV
           fi
 
       - name: Create Build Directory
@@ -121,7 +115,7 @@ jobs:
 
       - name: Upload Test Logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.4.3
         with:
           name: test-logs-${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}
           path: |

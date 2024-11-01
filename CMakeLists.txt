@@ -13,15 +13,15 @@ endif()
 
 # macOS ARM64 specific configurations
 if(APPLE AND YUMINA_ARCH_ARM64)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 endif()
 
 add_library(Yumina STATIC
-        memory/memory.cpp
         memory/memory.h
-        special/arch.hpp
+        common/arch.hpp
+        memory/allocator.cpp
+        memory/allocator.h
+        common/utils.hpp
 )
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -45,4 +45,13 @@ if(YUMINA_BUILD_TESTS)
     enable_testing()
     add_subdirectory(vendor/googletest)
     add_subdirectory(tests)
+endif()
+
+# Add the CoreFoundation framework for macOS
+if(APPLE)
+    find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
+    if(NOT COREFOUNDATION_FRAMEWORK)
+        message(FATAL_ERROR "Could not find CoreFoundation framework")
+    endif()
+    target_link_libraries(Yumina PRIVATE ${COREFOUNDATION_FRAMEWORK})
 endif()
