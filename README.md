@@ -1,6 +1,9 @@
 # Yumina
 
-Yumina is a collection of high-performance, low-level, and cross-platform libraries for C++. It is designed to provide efficient and optimized solutions for various computational tasks.
+[![codecov](https://codecov.io/gh/yuminaa/YHC/graph/badge.svg)](https://codecov.io/gh/yuminaa/YHC)
+ 
+Yumina is a collection of high-performance, low-level, and cross-platform libraries for C++.
+It is designed to provide efficient and optimized solutions for high-cost computational tasks.
 
 ## Features
 
@@ -39,7 +42,11 @@ Contributions are welcome! Please read the [guidelines](.github/CONTRIBUTING.md)
 
 This project is licensed under the [MIT License](LICENSE).
 
+## Status
+
+This project is currently under development and is not yet ready for production use.
+Clang is the primary compiler used for development, but other compilers will be supported in the future.
+
 ## Acknowledgements
 
 - [google/googletest](https://github.com/google/googletest)
-- [google/Benchmark](https://github.com/google/benchmark)

@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.29)
 project(Yumina)
 
 set(CMAKE_CXX_STANDARD 20)
-
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64|x86_64")
     set(YUMINA_ARCH_X64 ON)
     set(YUMINA_ARCH_ARM64 OFF)
@@ -11,7 +10,6 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     set(YUMINA_ARCH_ARM64 ON)
 endif()
 
-# macOS ARM64 specific configurations
 if(APPLE AND YUMINA_ARCH_ARM64)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 endif()

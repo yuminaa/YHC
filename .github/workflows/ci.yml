@@ -3,6 +3,9 @@ name: CI
 on:
   push:
     branches: [ main, dev ]
+    paths-ignore:
+      - '**/coverage.info'
+      - '**/coverage.xml'
   pull_request:
     branches: [ main, dev ]
 
