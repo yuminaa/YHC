@@ -34,7 +34,6 @@
 
 #include "allocator.h"
 #include "../common/arch.hpp"
-#include "../common/utils.hpp"
 
 namespace yumina::detail
 {
@@ -43,6 +42,7 @@ namespace yumina::detail
     thread_local auto large_block_cache_ = new large_block_cache_t();
     thread_local std::array<tiny_block_manager*, TINY_CLASSES> tiny_pools_{};
 
+    ALWAYS_INLINE
     static constexpr size_t get_alignment_for_size(const size_t size) noexcept
     {
         return size <= CACHE_LINE_SIZE
@@ -82,6 +82,7 @@ namespace yumina::detail
         return nullptr;
     }
 
+    ALWAYS_INLINE
     bool thread_cache_t::put(void *ptr, const uint8_t size_class) noexcept
     {
         if (auto &[blocks, count] = caches[size_class]; LIKELY(count < CACHE_SIZE))
@@ -94,6 +95,7 @@ namespace yumina::detail
         return false;
     }
 
+    ALWAYS_INLINE
     void thread_cache_t::clear() noexcept
     {
         for (auto &[blocks, count] : caches)
@@ -153,6 +155,7 @@ namespace yumina::detail
             word.store(~0ULL, std::memory_order_relaxed);
     }
 
+    ALWAYS_INLINE
     size_t bitmap::find_free_block(size_t size) noexcept
     {
         const size_t alignment = get_alignment_for_size(size);
@@ -262,6 +265,7 @@ namespace yumina::detail
         return ~static_cast<size_t>(0);
     }
 
+    ALWAYS_INLINE
     void bitmap::mark_free(size_t index) noexcept
     {
         const size_t word_idx = index / BITS_PER_WORD;
@@ -270,6 +274,7 @@ namespace yumina::detail
         words[word_idx].fetch_or(1ULL << bit_idx, std::memory_order_release);
     }
 
+    ALWAYS_INLINE
     bool bitmap::is_completely_free() const noexcept
     {
         VECTORIZE_LOOP
@@ -281,6 +286,7 @@ namespace yumina::detail
         return true;
     }
 
+    ALWAYS_INLINE
     void block_header::init(const size_t sz, const uint8_t size_class, const bool is_free) noexcept
     {
         if (UNLIKELY(sz > 1ULL << 47))
@@ -291,23 +297,27 @@ namespace yumina::detail
         magic = HEADER_MAGIC;
     }
 
+    ALWAYS_INLINE
     void block_header::encode(const size_t size, const uint8_t size_class) noexcept
     {
         data = (size & SIZE_MASK) |
                static_cast<uint64_t>(size_class) << 48;
     }
 
+    ALWAYS_INLINE
     bool block_header::set_free(const bool is_free) noexcept
     {
         data = (data & ~(1ULL << 63)) | static_cast<uint64_t>(is_free) << 63;
         return true;
     }
 
+    ALWAYS_INLINE
     bool block_header::is_valid() const noexcept
     {
         return magic == HEADER_MAGIC && (data & MAGIC_MASK) == MAGIC_VALUE;
     }
 
+    ALWAYS_INLINE
     void* pool::alloc(const size_class& sc) noexcept
     {
         const size_t size = sc.size;
@@ -323,6 +333,7 @@ namespace yumina::detail
         return nullptr;
     }
 
+    ALWAYS_INLINE
     void pool::free(const void* ptr, const size_class& sc) noexcept
     {
         const size_t offset = static_cast<const char*>(ptr) - reinterpret_cast<const char*>(memory);
@@ -330,17 +341,19 @@ namespace yumina::detail
             bitmap.mark_free(index);
     }
 
+    ALWAYS_INLINE
     bool pool::is_completely_free() const noexcept
     {
         return bitmap.is_completely_free();
     }
 
+    ALWAYS_INLINE
     void pool::return_mem() noexcept
     {
         #ifdef YUMINA_OS_LINUX
             if (auto* current = reinterpret_cast<block_header*>(memory))
             {
-                PREFETCH_L1(current);
+                PREFETCH_STREAM(current);
                 size_t free_space = 0;
             #if defined(YUMINA_ARCH_X64) && defined(__AVX512F__)
                 __m512i sum = _mm512_setzero_si512();
@@ -400,12 +413,14 @@ namespace yumina::detail
             #endif
     }
 
+    ALWAYS_INLINE
     pool_manager::pool_manager()
     {
         for (auto& count : pool_count)
             count = 0;
     }
 
+    ALWAYS_INLINE
     pool_manager::~pool_manager()
     {
         for (size_t sc = 0; sc < SIZE_CLASSES; ++sc)
@@ -415,6 +430,7 @@ namespace yumina::detail
         }
     }
 
+    ALWAYS_INLINE
     pool* pool_manager::alloc_pool(const size_t size_class) noexcept
     {
         if (pool_count[size_class] >= MAX_POOLS)
@@ -434,6 +450,7 @@ namespace yumina::detail
         }
     }
 
+    ALWAYS_INLINE
     void pool_manager::free_pool(const pool* p, const size_t size_class) noexcept
     {
         for (size_t i = 0; i < pool_count[size_class]; ++i)
@@ -451,6 +468,7 @@ namespace yumina::detail
         }
     }
 
+    ALWAYS_INLINE
     void* tiny_block_manager::tiny_pool::alloc_tiny(const uint8_t size_class) noexcept
     {
         const size_t size = (size_class + 1) << 3;
@@ -470,6 +488,7 @@ namespace yumina::detail
         return nullptr;
     }
 
+    ALWAYS_INLINE
     void tiny_block_manager::tiny_pool::free_tiny(void *ptr, const uint8_t size_class) noexcept
     {
         const size_t size = (size_class + 1) << 3;
@@ -486,16 +505,19 @@ namespace yumina::detail
         }
     }
 
+    ALWAYS_INLINE
     void* tiny_block_manager::alloc_tiny(uint8_t size_class) noexcept
     {
         return pool.alloc_tiny(size_class);
     }
 
+    ALWAYS_INLINE
     void tiny_block_manager::free_tiny(void* ptr, uint8_t size_class) noexcept
     {
         pool.free_tiny(ptr, size_class);
     }
 
+    ALWAYS_INLINE
     uint64_t large_block_cache_t::get_time() noexcept
     {
         #if defined(__x86_64__)
@@ -511,6 +533,7 @@ namespace yumina::detail
         #endif
     }
 
+    ALWAYS_INLINE
     size_t large_block_cache_t::get_bucket_index(size_t size) noexcept
     {
         #if defined(__x86_64__)
@@ -529,6 +552,7 @@ namespace yumina::detail
         #endif
     }
 
+    ALWAYS_INLINE
     void* large_block_cache_t::get_cached_block(size_t size) noexcept
     {
         if (UNLIKELY(size < MIN_CACHE_BLOCK || size > MAX_CACHE_BLOCK))
@@ -542,9 +566,15 @@ namespace yumina::detail
         const size_t count = count2.load(std::memory_order_acquire);
 
         #if defined(YUMINA_ARCH_X64) || defined(YUMINA_ARCH_ARM64)
-            PREFETCH_L1(&entries[0]);
+            #if defined(YUMINA_ARCH_ARM64)
+                PREFETCH_L1(&entries[0]);
+                if (count > 1)
+                    PREFETCH_L1(&entries[1]);
+            #elif defined(YUMINA_ARCH_X64)
+            PREFETCH_KEEP(&entries[0]);
             if (count > 1)
-                PREFETCH_L1(&entries[1]);
+                PREFETCH_KEEP(&entries[1]);
+            #endif
         #endif
 
         for (size_t i = 0; i < count; ++i)
@@ -566,6 +596,7 @@ namespace yumina::detail
         return nullptr;
     }
 
+    ALWAYS_INLINE
     bool large_block_cache_t::cache_block(void* ptr, const size_t size) noexcept
     {
         if (UNLIKELY(size < MIN_CACHE_BLOCK || size > MAX_CACHE_BLOCK))
@@ -601,7 +632,7 @@ namespace yumina::detail
             __m256i min_time = _mm256_set1_epi64x(UINT64_MAX);
             __m256i indices = _mm256_setr_epi64x(0, 1, 2, 3);
 
-            for (size_t i = 0; i < BUCKET_SIZE; i += 4)
+            for (size_t i = 0; i < size_bucket::BUCKET_SIZE; i += 4)
             {
                 __m256i times = _mm256_setr_epi64x(
                     bucket.entries[i].last_use,
@@ -621,9 +652,7 @@ namespace yumina::detail
             for (int i = 0; i < 4; ++i)
             {
                 if (results[i] < UINT64_MAX)
-                {
                     oldest_idx = i;
-                }
             }
         #elif defined(YUMINA_ARCH_ARM64)
             uint64x2_t min_time = vdupq_n_u64(UINT64_MAX);
@@ -677,31 +706,37 @@ namespace yumina::detail
         return false;
     }
 
+    ALWAYS_INLINE
     void block_header::set_mmapped(const bool is_mmap) noexcept
     {
         data = (data & ~MMAP_FLAG) | static_cast<uint64_t>(is_mmap) << 62;
     }
 
+    ALWAYS_INLINE
     size_t block_header::size() const noexcept
     {
         return data & SIZE_MASK;
     }
 
+    ALWAYS_INLINE
     uint8_t block_header::size_class() const noexcept
     {
         return (data & CLASS_MASK) >> 48;
     }
 
+    ALWAYS_INLINE
     bool block_header::is_free() const noexcept
     {
         return data & 1ULL << 63;
     }
 
+    ALWAYS_INLINE
     bool block_header::is_mmapped() const noexcept
     {
         return data & MMAP_FLAG;
     }
 
+    ALWAYS_INLINE
     bool block_header::is_aligned() const noexcept
     {
         const size_t sz = size();
@@ -711,6 +746,7 @@ namespace yumina::detail
         return (reinterpret_cast<uintptr_t>(this) & (alignment - 1)) == 0;
     }
 
+    ALWAYS_INLINE
     bool block_header::coalesce() noexcept
     {
         if (is_mmapped() || size_class() < TINY_CLASSES)
@@ -742,16 +778,19 @@ namespace yumina::detail
         return coalesced;
     }
 
+    ALWAYS_INLINE
     void block_header::set_coalesced(const bool is_coalesced) noexcept
     {
         data = (data & ~COALESCED_FLAG) | static_cast<uint64_t>(is_coalesced) << 61;
     }
 
+    ALWAYS_INLINE
     bool block_header::is_coalesced() const noexcept
     {
         return data & COALESCED_FLAG;
     }
 
+    ALWAYS_INLINE
     void large_block_cache_t::clear() noexcept
     {
         for (auto& bucket : buckets)
@@ -835,7 +874,11 @@ namespace yumina::detail
         {
             auto* header = reinterpret_cast<block_header*>(
                 static_cast<char*>(ptr) - sizeof(block_header));
-            PREFETCH_L1(header);
+            #if defined(__aarch64__)
+                PREFETCH_L1(header);
+            #elif
+                PREFETCH_KEEP(header);
+            #endif
             header->set_free(false);
             return ptr;
         }
@@ -897,7 +940,7 @@ namespace yumina::detail
         }
     }
 
-    namespace yumina::detail::internal
+    namespace internal
     {
         void* allocate(const size_t size) noexcept
         {
@@ -966,6 +1009,7 @@ namespace yumina::detail
                     size_class);
         }
 
+        ALWAYS_INLINE
         void* reallocate(void* ptr, const size_t new_size) noexcept
         {
             if (!ptr)
@@ -1008,14 +1052,11 @@ namespace yumina::detail
                     auto dst = static_cast<char*>(new_ptr);
 
                     #ifdef __AVX512F__
-                        // Prefetch for write to improve destination cache line handling
-                        PREFETCH_L1(dst);
-                        PREFETCH_L1(dst + 64);
-
+                        PREFETCH_KEEP(dst);
+                        PREFETCH_KEEP(dst + 64);
                         // Align to 64-byte boundary for optimal AVX-512 performance
                         size_t offset = 0;
                         size_t remaining = copy_size;
-
                         // Handle unaligned portion
                         size_t dst_align = reinterpret_cast<uintptr_t>(dst) & 63;
                         if (dst_align != 0)
@@ -1191,6 +1232,14 @@ namespace yumina::detail
 
         void cleanup() noexcept
         {
+            large_block_cache_->clear();
+            thread_cache_.clear();
+
+            for (auto*& pool : tiny_pools_)
+            {
+                delete pool;
+                pool = nullptr;
+            }
         }
 
         void thread_cleanup() noexcept

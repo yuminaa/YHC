@@ -268,14 +268,13 @@
 #else
     #define LIKELY(x) (x)
     #define UNLIKELY(x) (x)
-    #define ALWAYS_INLINE __forceinline
+    #define ALWAYS_INLINE inline
     #define NEVER_INLINE __declspec(noinline)
     #define RESTRICT __restrict
     #define ALIGN_TO(x) __declspec(align(x))
     #define PACKED
     #define ASSUME(x) __assume(x)
     #define ASSUME_ALIGNED(x, a) (x)
-    #define NO_SANITIZE
     #define VECTORIZE_LOOP
     #define UNROLL_LOOP
     #define NO_VECTORIZE

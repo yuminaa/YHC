@@ -46,3 +46,12 @@ if(YUMINA_BUILD_TESTS)
     add_subdirectory(vendor/googletest)
     add_subdirectory(tests)
 endif()
+
+# Add the CoreFoundation framework for macOS
+if(APPLE)
+    find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
+    if(NOT COREFOUNDATION_FRAMEWORK)
+        message(FATAL_ERROR "Could not find CoreFoundation framework")
+    endif()
+    target_link_libraries(Yumina PRIVATE ${COREFOUNDATION_FRAMEWORK})
+endif()

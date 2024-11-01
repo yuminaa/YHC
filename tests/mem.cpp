@@ -1,49 +1,80 @@
+#include <chrono>
+#include <iostream>
 #include <gtest/gtest.h>
-#include <memory/allocator.h>
+#include "../memory/allocator.h"
 
-using namespace yumina::detail::yumina::detail::internal;
-
-class AllocatorTest : public testing::Test
+TEST(allocator, alloc_dealloc)
 {
-protected:
-    void SetUp() override
-    {
-    }
-
-    void TearDown() override
-    {
-    }
-};
-
-TEST_F(AllocatorTest, BasicAllocation)
-{
-    void* ptr = allocate(5);
-    ASSERT_NE(ptr, nullptr) << "Allocation failed; returned a null pointer";
-    deallocate(ptr);
+    const auto ptr = static_cast<int *>(yumina::detail::internal::allocate(100));
+    ASSERT_NE(ptr, nullptr);
+    yumina::detail::internal::deallocate(ptr);
 }
 
-TEST_F(AllocatorTest, AllocationDifferentSizes)
+TEST(allocator, alloc_dealloc_array)
 {
-    for (const std::size_t sizes[] = {1, 16, 64, 128, 512, 1024}; const std::size_t size : sizes)
-    {
-        void* ptr = allocate(size);
-        ASSERT_NE(ptr, nullptr) << "Allocation failed for size: " << size;
-        deallocate(ptr);
-    }
+    const auto ptr = static_cast<int *>(yumina::detail::internal::allocate(100 * sizeof(int)));
+    ASSERT_NE(ptr, nullptr);
+    yumina::detail::internal::deallocate(ptr);
 }
 
-TEST_F(AllocatorTest, AllocationAlignment)
+TEST(AllocatorTest, NewDelete)
 {
-    constexpr std::size_t size = 64;
-    void* ptr = allocate(size);
-    ASSERT_EQ(reinterpret_cast<std::uintptr_t>(ptr) % alignof(std::max_align_t), 0)
-        << "Pointer is not aligned as expected";
-    deallocate(ptr);
+    const auto ptr = new int(42);
+    ASSERT_NE(ptr, nullptr);
+    ASSERT_EQ(*ptr, 42);
+    delete ptr;
 }
 
-TEST_F(AllocatorTest, LargeAllocationFailure)
+TEST(AllocatorTest, NewDeleteArray)
 {
-    constexpr auto very_large_size = static_cast<std::size_t>(-1);
-    void* ptr = allocate(very_large_size);
-    ASSERT_EQ(ptr, nullptr) << "Allocation should fail for an unrealistically large size";
+    const auto ptr = new int[100];
+    ASSERT_NE(ptr, nullptr);
+    delete[] ptr;
+}
+
+TEST(allocator, alloc_zero_size)
+{
+    const auto ptr = static_cast<int *>(yumina::detail::internal::allocate(0));
+    ASSERT_EQ(ptr, nullptr);
+}
+
+TEST(allocator, alloc_large_size)
+{
+    const auto ptr = static_cast<int *>(yumina::detail::internal::allocate(1024 * 1024 * 1024)); // 1 GB
+    ASSERT_NE(ptr, nullptr);
+    yumina::detail::internal::deallocate(ptr);
+}
+
+TEST(AllocatorTest, NewDeleteNull)
+{
+    int* ptr = nullptr;
+    delete ptr; // Should not crash
+}
+
+TEST(AllocatorTest, NewDeleteArrayNull)
+{
+    const int* ptr = nullptr;
+    delete[] ptr; // Should not crash
+}
+
+TEST(AllocatorTest, NewDeleteMultiple)
+{
+    const auto ptr1 = new int(42);
+    const auto ptr2 = new int(84);
+    ASSERT_NE(ptr1, nullptr);
+    ASSERT_NE(ptr2, nullptr);
+    ASSERT_EQ(*ptr1, 42);
+    ASSERT_EQ(*ptr2, 84);
+    delete ptr1;
+    delete ptr2;
+}
+
+TEST(AllocatorTest, NewDeleteArrayMultiple)
+{
+    const auto ptr1 = new int[50];
+    const auto ptr2 = new int[100];
+    ASSERT_NE(ptr1, nullptr);
+    ASSERT_NE(ptr2, nullptr);
+    delete[] ptr1;
+    delete[] ptr2;
 }

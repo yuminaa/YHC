@@ -186,7 +186,7 @@ namespace yumina::detail
     ALWAYS_INLINE static void* alloc_large(size_t size) noexcept;
     ALWAYS_INLINE static void cleanup();
 
-    namespace yumina::detail::internal
+    namespace internal
     {
         void* allocate(size_t size) noexcept;
         void deallocate(void* ptr) noexcept;
