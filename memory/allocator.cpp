@@ -1009,7 +1009,6 @@ namespace yumina::detail
                     size_class);
         }
 
-        ALWAYS_INLINE
         void* reallocate(void* ptr, const size_t new_size) noexcept
         {
             if (!ptr)
