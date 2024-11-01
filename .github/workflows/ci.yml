@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 0  # Fetch all history for better version detection
+          fetch-depth: 0
 
       - name: Fetch Google Test
         if: ${{ !hashFiles('vendor/googletest/**') }}
@@ -42,14 +42,6 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.compiler }}-${{ matrix.build_type }}
           max-size: 500M
 
-      - name: Cache Clang
-        uses: actions/cache@v4
-        with:
-          path: /usr/local/clang
-          key: ${{ runner.os }}-clang-${{ hashFiles('**/clang-version.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-clang-
-
       - name: Install Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -58,16 +50,17 @@ jobs:
             ninja \
             llvm \
             lcov \
-            || true  # Prevent failure if packages are already installed
+            || true
 
       - name: Configure Compiler
         run: |
           if [ "${{ matrix.compiler }}" = "clang" ]; then
             if [ "${{ runner.os }}" = "macOS" ]; then
-              echo "CC=/opt/homebrew/opt/llvm/bin/clang" >> $GITHUB_ENV
-              echo "CXX=/opt/homebrew/opt/llvm/bin/clang++" >> $GITHUB_ENV
-              echo "CXXFLAGS=-stdlib=libc++ -fprofile-instr-generate -fcoverage-mapping" >> $GITHUB_ENV
-              echo "LDFLAGS=-stdlib=libc++" >> $GITHUB_ENV
+              LLVM_PATH=$(brew --prefix llvm)
+              echo "CC=$LLVM_PATH/bin/clang" >> $GITHUB_ENV
+              echo "CXX=$LLVM_PATH/bin/clang++" >> $GITHUB_ENV
+              echo "LDFLAGS=-L$LLVM_PATH/lib" >> $GITHUB_ENV
+              echo "CPPFLAGS=-I$LLVM_PATH/include" >> $GITHUB_ENV
             fi
           fi
 
@@ -85,7 +78,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install \
             -DBUILD_TESTING=ON \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DCMAKE_CXX_FLAGS="--coverage" \
+            -DCMAKE_CXX_FLAGS="-stdlib=libc++ --coverage -fprofile-instr-generate -fcoverage-mapping" \
             -DCMAKE_C_FLAGS="--coverage"
 
       - name: Build
@@ -106,7 +99,6 @@ jobs:
           lcov --remove coverage.info '/usr/*' '/opt/*' '*/vendor/*' '*/tests/*' --output-file coverage.info
           lcov --list coverage.info
           
-          # Convert lcov to cobertura format for better GitHub integration
           pip3 install lcov_cobertura
           python3 -m lcov_cobertura coverage.info --output coverage.xml
 
